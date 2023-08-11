@@ -1,5 +1,4 @@
 CXX = g++
-experiments_amount = 10
 modes = Without-specifying-optimization O0 O1 O2 O3 Os march mtune Ofast
 
 Without-specifying-optimization:
@@ -112,18 +111,13 @@ Ofast-run:
 	@echo ""
 
 run:
-	@echo "modes,time-diff(one cycle),time-diff(two cycles)" > data.csv
+	@echo "results" > steps_data.csv
 	@for key in $(modes) ; do \
         make $$key ; \
-		echo $$key >> data.csv ; \
-		index=1 ; while [ $$index -le $(experiments_amount) ] ; do \
-        	echo -n $$index"," >> data.csv ; \
-			make $$key"-run" ; \
-        	index=$$((index + 1)) ; \
-    	done ; \
-		echo >> data.csv ; \
+		echo $$key >> steps_data.csv ; \
+		make $$key"-run" ; \
+		echo >> steps_data.csv ; \
     done
-	.env/bin/python3.10 graphics.py $(experiments_amount)
 
 clean:
 	rm -rf main main0 main1 main2 main3 mains main_march_native main_mtune_native main_fast

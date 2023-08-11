@@ -10,66 +10,97 @@ struct df {
 	long nanoseconds;
 };
 
-std::pair<int,int> one_cycle_min_max(const std::vector<int>& array) {
+std::vector<df> one_cycle_min_max_with_timechecking(const std::vector<int>& array) {
 	int min = array[0];
 	int max = array[0];
-	
-	for (const int& num : array) {
-		if (max < num) {
-			max = num;
-		}
-		if (min > num) {
-			min = num;
-		}
-	}
 
-	return {min, max};
-}
+	std::vector<df> result;
 
-std::pair<int,int> two_cycles_min_max(const std::vector<int>& array) {
-	int min = array[0];
-	int max = array[0];
-	
-	for (const int& num : array) {
-		if (min > num) {
-			min = num;
-		}
-	}
-	
-	for (const int& num : array) {
-		if (max < num) {
-			max = num;
-		}
-	}
-	
-	return {min, max};
-}
-
-df process_with_timechecking(
-	std::function<std::pair<int, int>(const std::vector<int>&)> func, 
-	const std::vector<int>& array) {
 	struct timespec start, end;
     clock_gettime(CLOCK_MONOTONIC_RAW, &start);
 
-    std::pair<int, int> min_max_pair = func(array);
+	for (int i = 0; i < array.size(); ++i) {
+		if (max < array[i]) {
+			max = array[i];
+		}
+		if (min > array[i]) {
+			min = array[i];
+		}
 
-    clock_gettime(CLOCK_MONOTONIC_RAW, &end);
+		if ((i + 1) % (array.size() / 10) == 0) {
+			clock_gettime(CLOCK_MONOTONIC_RAW, &end);
 
-    long seconds = end.tv_sec - start.tv_sec;
-    long nanoseconds = end.tv_nsec - start.tv_nsec;
+			long seconds = end.tv_sec - start.tv_sec;
+			long nanoseconds = end.tv_nsec - start.tv_nsec;
 
-    if (nanoseconds < 0) {
-        seconds--;
-        nanoseconds += 1000000000L;
-    }
+			if (nanoseconds < 0) {
+				seconds--;
+				nanoseconds += 1000000000L;
+			}
 
-	std::cout << "Time difference: " << seconds << "." << 
-		std::setfill('0') << std::setw(9) << nanoseconds << 
-		" seconds" << std::endl;
-	std::cout << "min: " << min_max_pair.first << 
-		", max: " << min_max_pair.second << std::endl;
+			result.push_back({seconds, nanoseconds});
 
-	return {seconds, nanoseconds};
+			clock_gettime(CLOCK_MONOTONIC_RAW, &start);
+		}
+	}
+
+	return result;
+}
+
+std::vector<df> two_cycles_min_max_with_timechecking(const std::vector<int>& array) {
+	int min = array[0];
+	int max = array[0];
+	
+	std::vector<df> result;
+
+	struct timespec start, end;
+    clock_gettime(CLOCK_MONOTONIC_RAW, &start);
+	
+	for (int i = 0; i < array.size(); ++i) {
+		if (min > array[i]) {
+			min = array[i];
+		}
+		
+		if ((i + 1) % (array.size() / 10) == 0) {
+			clock_gettime(CLOCK_MONOTONIC_RAW, &end);
+
+			long seconds = end.tv_sec - start.tv_sec;
+			long nanoseconds = end.tv_nsec - start.tv_nsec;
+
+			if (nanoseconds < 0) {
+				seconds--;
+				nanoseconds += 1000000000L;
+			}
+
+			result.push_back({seconds, nanoseconds});
+
+			clock_gettime(CLOCK_MONOTONIC_RAW, &start);
+		}
+	}
+	
+	for (int i = 0; i < array.size(); ++i) {
+		if (max < array[i]) {
+			max = array[i];
+		}
+
+		if ((i + 1) % (array.size() / 10) == 0) {
+			clock_gettime(CLOCK_MONOTONIC_RAW, &end);
+
+			long seconds = end.tv_sec - start.tv_sec;
+			long nanoseconds = end.tv_nsec - start.tv_nsec;
+
+			if (nanoseconds < 0) {
+				seconds--;
+				nanoseconds += 1000000000L;
+			}
+
+			result.push_back({seconds, nanoseconds});
+
+			clock_gettime(CLOCK_MONOTONIC_RAW, &start);
+		}
+	}
+
+	return result;
 }
 
 int main(int argc, char* argv[]) {
@@ -78,17 +109,27 @@ int main(int argc, char* argv[]) {
 		array[i] = rand() % 11 - 5;
 	}
 
-	std::ofstream data_file;
-	data_file.open("data.csv", std::ios::out | std::ios::app);
+	std::ofstream steps_data_file;
+	steps_data_file.open("steps_data.csv", std::ios::out | std::ios::app);
 	
-	if (data_file.is_open()) {
-		df result = process_with_timechecking(&one_cycle_min_max, array);
-		data_file << result.seconds << "." << 
-			std::setfill('0') << std::setw(9) << result.nanoseconds << ",";
-		result = process_with_timechecking(&two_cycles_min_max, array);
-		data_file << result.seconds << "." << 
-			std::setfill('0') << std::setw(9) <<result.nanoseconds << "\n";
-		data_file.close();
+	if (steps_data_file.is_open()) {
+		std::vector<df> result = one_cycle_min_max_with_timechecking(array);
+		for (const df& r : result) {
+			steps_data_file << r.seconds << "." << 
+				std::setfill('0') << std::setw(9) << r.nanoseconds << ",";
+		}
+
+		steps_data_file << "\n";
+		result = two_cycles_min_max_with_timechecking(array);
+
+		for (const df& r : result) {
+			steps_data_file << r.seconds << "." << 
+				std::setfill('0') << std::setw(9) << r.nanoseconds << ",";
+		}
+
+		steps_data_file << "\n\n";
+
+		steps_data_file.close();
 	}
 	
 	return 0;
